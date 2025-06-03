@@ -2,6 +2,9 @@
 credentials.json
 token.pickle
 .streamlit/secrets.toml
+service-account.json
+tasktracker-461421-*.json
+*-service-account.json
 
 # Python
 __pycache__/

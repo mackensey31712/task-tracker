@@ -1,0 +1,86 @@
+Outline of the features and functionality of the Task Tracker app. Here's a breakdown of how it would work:
+
+## Task Tracker App Functionality
+
+This app will allow me to efficiently manage tasks and track the time spent on each, with seamless synchronization to Google Sheets
+
+---
+
+### **Core App Features**
+
+* **Task Creation:**
+    * Users can create new tasks.
+    * Each task will have two primary input fields:
+        * **Task Name:** A descriptive name for the task.
+        * **Case Number:** A manually entered identifier for the task.
+* **Task List Display:**
+    * All created tasks will be visible in a list.
+    * Each task entry will display its "Task Name" and "Case Number."
+* **Individual Task Timers:**
+    * Each task in the list will have its own **Start** and **Stop** button.
+    * **Start Button:**
+        * When clicked for the first time for a specific task, it will record the current date and time as the "Date and Time Started." This timestamp will remain fixed for that initial start.
+        * If a task has been previously started and stopped, clicking "Start" again will resume the timer without altering the original "Date and Time Started." The app will internally track these multiple start/stop sessions to calculate the cumulative time.
+    * **Stop Button:**
+        * When clicked, it will record the current date and time as the "Date and Time Stopped." This timestamp will be updated every time the task is stopped.
+        * It will also calculate the time spent for the *current session* and add it to a cumulative total for that task.
+* **Data Persistence:**
+    * The app will save all tasks, their "Case Numbers," "Date and Time Started," the latest "Date and Time Stopped," and the cumulative "Total Time Spent" locally.
+    * This ensures that when you close and reopen the app, all tasks and their current states are retained.
+
+---
+
+### **Google Sheets Integration**
+
+* **Synchronization Button:**
+    * A dedicated "Synch to GS" button will be available in the app.
+* **Sheet Structure:**
+    * The designated Google Sheet will have the following columns in this order:
+        1.  Case Number
+        2.  Task
+        3.  Date and Time Started
+        4.  Date and Time Stopped
+        5.  Total Time Spent (hours)
+* **Synchronization Logic:**
+    * When the "Synch" button is pressed:
+        1.  The app will iterate through all tasks.
+        2.  For each task, it will search for a matching "Case Number" and "Task Name" in the Google Sheet.
+            * **If a match is found:** It will update the existing row.
+                * The "Date and Time Stopped" cell will be updated with the latest timestamp recorded when the task was last stopped in the app.
+                * The "Total Time Spent (hours)" cell will be recalculated based on all start/stop sessions for that task. This would be the cumulative time spent. *The formula in the sheet itself, if any, should ideally just display this value, or the app directly writes the calculated total in hours.*
+            * **If no match is found:** It will create a new row in the Google Sheet.
+                * "Case Number" will be filled from the app.
+                * "Task Name" will be filled from the app.
+                * "Date and Time Started" will be the initial start time recorded in the app.
+                * "Date and Time Stopped" will be the latest stop time recorded in the app.
+                * "Total Time Spent (hours)" will be the cumulative time spent as calculated by the app.
+    * **"Total Time Spent (hours)" Calculation:** This value represents the *total* duration a task has been active (sum of all intervals between starts and stops). The app will calculate this cumulative duration in hours and write that value to the sheet. For example, if a task was worked on from 9:00 AM to 9:30 AM, then again from 1:00 PM to 1:15 PM, the total time spent would be 0.75 hours.
+
+Here's the Google Sheet Shared URL with Editor Access: https://docs.google.com/spreadsheets/d/19Ipiaq8dsg9JLSGqFtY9qRBPb-OaLhxDsuuBG12Wbas/edit?usp=sharing. 
+
+The Headers are already there. A1 = Case Number, B1 = Task, C1 = Date and Time Started, D1 = Date and Time Stopped, and E1 = Total Time Spent (hours). They are all in the "Mac" sheet.
+
+To Synchronize this to the Google Sheet, let's do it through a "Synch to GS" button
+
+
+---
+
+### **Slack Integration**
+
+* **Trigger:**
+    * An update to the Google Sheet (specifically, when a row is added or the "Date and Time Stopped" or "Total Time Spent (hours)" cells are modified by the synchronization process) will trigger a script.
+* **Mechanism:**
+    * A **Google Apps Script** will be attached to the Google Sheet.
+    * This script will be configured with an `onEdit()` or `onChange()` trigger that monitors changes.
+* **Action:**
+    * When the trigger fires due to a relevant update from the app's synchronization:
+        1.  The Google Apps Script will identify the updated row's data (e.g., "Case Number," "Task Name," "Total Time Spent").
+        2.  It will then format a message containing this information.
+        3.  The script will send this message to a pre-configured **Slack Workflow** using a **Webhook URL**.
+* **Slack Workflow:**
+    * I will need to set up a Workflow in Slack that can be triggered by an incoming webhook.
+    * This workflow will define how the message received from the Google Apps Script is processed and displayed in Slack (e.g., posted to a specific channel, sent as a direct message).
+
+---
+
+This detailed outline should provide a clear understanding of your Task Tracker app's desired features and how they interact.

@@ -1,0 +1,157 @@
+# Deploying Task Tracker to Streamlit Cloud
+
+## Pre-Deployment Steps
+
+1. Create a GitHub Repository:
+   ```powershell
+   # Initialize git if not already done
+   git init
+   
+   # Create and set contents of .gitignore
+   @"
+   # Credentials and tokens
+   credentials.json
+   token.pickle
+   
+   # Python
+   __pycache__/
+   *.py[cod]
+   *$py.class
+   venv/
+   
+   # Environment variables
+   .env
+   .streamlit/secrets.toml
+   
+   # VS Code
+   .vscode/
+   "@ | Out-File -FilePath .gitignore
+
+   # Add files to git
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin https://github.com/yourusername/task-tracker.git
+   git push -u origin main
+   ```
+
+2. Set up Google Cloud Project for deployment:
+   a. Go to Google Cloud Console (https://console.cloud.google.com)
+   b. Create a new project or select existing project
+   c. Enable Google Sheets API
+   d. Create new OAuth 2.0 Client ID credentials:
+      - Application type: Web application
+      - Name: Task Tracker Streamlit
+      - Authorized JavaScript origins: https://share.streamlit.io
+      - Authorized redirect URIs: 
+        * https://share.streamlit.io/oauth2/callback
+        * https://<your-app-name>.streamlit.app/oauth2/callback
+   e. Download the new credentials JSON file
+
+3. Create Streamlit secrets file:
+   ```powershell
+   # Create .streamlit folder
+   New-Item -ItemType Directory -Path .streamlit
+
+   # Create secrets.toml template
+   @"
+   # Google Sheets API credentials
+   [gcp_service_account]
+   GOOGLE_SHEETS_CREDENTIALS = '''
+   {
+     "web": {
+       "client_id": "your-client-id",
+       "project_id": "your-project-id",
+       "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+       "token_uri": "https://oauth2.googleapis.com/token",
+       "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+       "client_secret": "your-client-secret",
+       "redirect_uris": ["https://share.streamlit.io/oauth2/callback"]
+     }
+   }
+   '''
+   SPREADSHEET_ID = "your-spreadsheet-id"
+   SHEET_NAME = "Mac"
+   "@ | Out-File -FilePath .streamlit/secrets.toml
+   ```
+
+4. Update sheets_integration.py to use Streamlit secrets:
+   - Replace direct credential file loading with st.secrets
+   - Update credential handling to work with Streamlit Cloud
+
+## Deployment Steps
+
+1. Sign up for Streamlit Cloud:
+   - Go to https://share.streamlit.io
+   - Sign in with your GitHub account
+
+2. Deploy your app:
+   a. Click "New app"
+   b. Select your repository
+   c. Select main branch
+   d. Set Main file path as "main.py"
+   e. Click "Deploy!"
+
+3. Configure Streamlit Cloud secrets:
+   a. In your app's dashboard, go to "Settings" ⚙️
+   b. Under "Secrets", paste the contents of your .streamlit/secrets.toml
+   c. Click "Save"
+
+## Post-Deployment Steps
+
+1. Update Google Cloud Console settings:
+   - Add your Streamlit app URL to authorized domains
+   - Update OAuth consent screen if needed
+
+2. Test the deployed application:
+   - Try loading tasks from Google Sheets
+   - Test creating new tasks
+   - Verify sync functionality
+   - Check time tracking accuracy
+
+## Troubleshooting
+
+1. If authentication fails:
+   - Check if secrets are properly set in Streamlit Cloud
+   - Verify OAuth consent screen configuration
+   - Check authorized domains in Google Cloud Console
+
+2. If syncing fails:
+   - Check Spreadsheet ID in secrets
+   - Verify Google Sheets API is enabled
+   - Check sheet name matches the one in secrets
+
+3. Common issues:
+   - Token expiration: Users need to re-authenticate
+   - Missing permissions: Check OAuth scope configuration
+   - Rate limits: Monitor API usage in Google Cloud Console
+
+## Maintenance
+
+1. Monitor your app:
+   - Check Streamlit Cloud dashboard for errors
+   - Monitor Google Cloud Console for API usage
+   - Review error logs regularly
+
+2. Updates:
+   - Push changes to GitHub
+   - Streamlit Cloud will automatically redeploy
+   - Test after each deployment
+
+## Security Notes
+
+1. Never commit credentials to GitHub:
+   - Keep credentials.json local
+   - Use .gitignore to exclude sensitive files
+   - Use Streamlit secrets for configuration
+
+2. Regular maintenance:
+   - Rotate credentials if compromised
+   - Update dependencies regularly
+   - Monitor for security advisories
+
+## Resources
+
+- Streamlit Cloud Documentation: https://docs.streamlit.io/streamlit-cloud
+- Google Cloud Console: https://console.cloud.google.com
+- Google Sheets API Documentation: https://developers.google.com/sheets/api

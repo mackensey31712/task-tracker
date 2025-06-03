@@ -1,4 +1,5 @@
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -19,63 +20,47 @@ def get_google_sheets_credentials():
         try:
             creds_dict = json.loads(st.secrets.gcp_service_account.GOOGLE_SHEETS_CREDENTIALS)
             
-            # Use OAuth credentials directly in cloud environment
-            if 'web' in creds_dict:
-                client_config = {
-                    'web': {
-                        'client_id': creds_dict['web']['client_id'],
-                        'client_secret': creds_dict['web']['client_secret'],
-                        'auth_uri': creds_dict['web']['auth_uri'],
-                        'token_uri': creds_dict['web']['token_uri'],
-                        'redirect_uris': creds_dict['web']['redirect_uris']
-                    }
-                }
-                
-                # Initialize flow with client configuration
-                flow = InstalledAppFlow.from_client_config(
-                    client_config,
-                    SCOPES,
-                    redirect_uri=creds_dict['web']['redirect_uris'][0]
+            # Check if we have a service account key
+            if 'type' in creds_dict and creds_dict['type'] == 'service_account':
+                # Create credentials from service account info
+                creds = service_account.Credentials.from_service_account_info(
+                    creds_dict,
+                    scopes=SCOPES
                 )
-                
-                # Get the authorization URL
-                auth_url, _ = flow.authorization_url(prompt='consent')
-                
-                # Show the authentication URL to the user
-                st.markdown("""
-                ### Google Sheets Authentication Required
-                Please click the link below to authenticate with Google Sheets:
-                """)
-                st.markdown(f"[Click here to authenticate]({auth_url})")
-                
-                # Wait for the authentication code
-                code = st.text_input("Enter the authentication code:", key="auth_code")
-                if code:
-                    try:
-                        flow.fetch_token(code=code)
-                        creds = flow.credentials
-                        st.success("Authentication successful!")
-                    except Exception as e:
-                        st.error(f"Error fetching token: {str(e)}")
-                        return None
+            else:
+                # Fall back to OAuth2 client credentials
+                creds = Credentials(
+                    token=None,
+                    client_id=creds_dict['web']['client_id'],
+                    client_secret=creds_dict['web']['client_secret'],
+                    token_uri=creds_dict['web']['token_uri'],
+                    scopes=SCOPES
+                )
         except Exception as e:
             st.error(f"Error loading credentials from secrets: {str(e)}")
             return None
     else:
         # Local development using files
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
-                creds = pickle.load(token)
-        
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+        try:
+            # First try service account json file
+            if os.path.exists('service-account.json'):
+                creds = service_account.Credentials.from_service_account_file(
+                    'service-account.json',
+                    scopes=SCOPES
+                )
+            # Fall back to OAuth2 flow
+            elif os.path.exists('credentials.json'):
                 flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
                 creds = flow.run_local_server(port=0)
-            
-            with open('token.pickle', 'wb') as token:
-                pickle.dump(creds, token)
+                # Save the credentials for the next run
+                with open('token.pickle', 'wb') as token:
+                    pickle.dump(creds, token)
+            elif os.path.exists('token.pickle'):
+                with open('token.pickle', 'rb') as token:
+                    creds = pickle.load(token)
+        except Exception as e:
+            st.error(f"Error loading local credentials: {str(e)}")
+            return None
     
     return creds
 

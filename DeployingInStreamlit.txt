@@ -12,6 +12,7 @@
    # Credentials and tokens
    credentials.json
    token.pickle
+   service-account.json
    
    # Python
    __pycache__/
@@ -37,16 +38,20 @@
 
 2. Set up Google Cloud Project for deployment:
    a. Go to Google Cloud Console (https://console.cloud.google.com)
-   b. Create a new project or select existing project
-   c. Enable Google Sheets API
-   d. Create new OAuth 2.0 Client ID credentials:
-      - Application type: Web application
-      - Name: Task Tracker Streamlit
-      - Authorized JavaScript origins: https://share.streamlit.io
-      - Authorized redirect URIs: 
-        * https://share.streamlit.io/oauth2/callback
-        * https://<your-app-name>.streamlit.app/oauth2/callback
-   e. Download the new credentials JSON file
+   b. Select project "tasktracker-461421" or create new project
+   c. Enable Google Sheets API if not already enabled
+   d. Create a Service Account:      - Go to "IAM & Admin" > "Service Accounts"
+      - Click "Create Service Account"
+      - Name: "tasktracker-service"
+      - Click "Continue"
+      - Under "Grant this service account access to project", click "Select a role"
+      - Choose "Basic" > "Editor" role
+      - Click "Continue" and then "Done"
+      - Click on the new service account in the list
+      - Go to "Keys" tab
+      - Create a new JSON key
+      - Save the downloaded JSON file securely
+   e. Share your Google Sheet with the service account email
 
 3. Create Streamlit secrets file:
    ```powershell
@@ -59,15 +64,16 @@
    [gcp_service_account]
    GOOGLE_SHEETS_CREDENTIALS = '''
    {
-     "web": {
-       "client_id": "your-client-id",
-       "project_id": "your-project-id",
-       "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-       "token_uri": "https://oauth2.googleapis.com/token",
-       "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-       "client_secret": "your-client-secret",
-       "redirect_uris": ["https://share.streamlit.io/oauth2/callback"]
-     }
+     "type": "service_account",
+     "project_id": "tasktracker-461421",
+     "private_key_id": "your-private-key-id",
+     "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+     "client_email": "tasktracker-service@tasktracker-461421.iam.gserviceaccount.com",
+     "client_id": "your-client-id",
+     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+     "token_uri": "https://oauth2.googleapis.com/token",
+     "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+     "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/..."
    }
    '''
    SPREADSHEET_ID = "your-spreadsheet-id"
@@ -75,9 +81,10 @@
    "@ | Out-File -FilePath .streamlit/secrets.toml
    ```
 
-4. Update sheets_integration.py to use Streamlit secrets:
-   - Replace direct credential file loading with st.secrets
-   - Update credential handling to work with Streamlit Cloud
+4. sheets_integration.py has been updated to:
+   - Use service account authentication instead of OAuth2
+   - Handle both local development and cloud deployment
+   - Support seamless authentication in Streamlit Cloud
 
 ## Deployment Steps
 

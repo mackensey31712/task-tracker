@@ -17,30 +17,47 @@ def get_google_sheets_credentials():
     # Check if we're running on Streamlit Cloud
     if hasattr(st, 'secrets') and 'gcp_service_account' in st.secrets:
         try:
-            creds_info = json.loads(st.secrets.gcp_service_account.GOOGLE_SHEETS_CREDENTIALS)
+            creds_dict = json.loads(st.secrets.gcp_service_account.GOOGLE_SHEETS_CREDENTIALS)
             
-            # Create OAuth2 credentials
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES,
-                redirect_uri=creds_info['web']['redirect_uris'][0]
-            )
-            
-            # Get the authorization URL
-            auth_url, _ = flow.authorization_url(prompt='consent')
-            
-            # Show the authentication URL to the user
-            st.markdown(f"Please authenticate: [Click here to authenticate]({auth_url})")
-            
-            # Wait for the authentication code
-            code = st.text_input("Enter the authentication code:")
-            if code:
-                try:
-                    flow.fetch_token(code=code)
-                    creds = flow.credentials
-                except Exception as e:
-                    st.error(f"Error fetching token: {str(e)}")
-                    return None
-                    
+            # Use OAuth credentials directly in cloud environment
+            if 'web' in creds_dict:
+                client_config = {
+                    'web': {
+                        'client_id': creds_dict['web']['client_id'],
+                        'client_secret': creds_dict['web']['client_secret'],
+                        'auth_uri': creds_dict['web']['auth_uri'],
+                        'token_uri': creds_dict['web']['token_uri'],
+                        'redirect_uris': creds_dict['web']['redirect_uris']
+                    }
+                }
+                
+                # Initialize flow with client configuration
+                flow = InstalledAppFlow.from_client_config(
+                    client_config,
+                    SCOPES,
+                    redirect_uri=creds_dict['web']['redirect_uris'][0]
+                )
+                
+                # Get the authorization URL
+                auth_url, _ = flow.authorization_url(prompt='consent')
+                
+                # Show the authentication URL to the user
+                st.markdown("""
+                ### Google Sheets Authentication Required
+                Please click the link below to authenticate with Google Sheets:
+                """)
+                st.markdown(f"[Click here to authenticate]({auth_url})")
+                
+                # Wait for the authentication code
+                code = st.text_input("Enter the authentication code:", key="auth_code")
+                if code:
+                    try:
+                        flow.fetch_token(code=code)
+                        creds = flow.credentials
+                        st.success("Authentication successful!")
+                    except Exception as e:
+                        st.error(f"Error fetching token: {str(e)}")
+                        return None
         except Exception as e:
             st.error(f"Error loading credentials from secrets: {str(e)}")
             return None

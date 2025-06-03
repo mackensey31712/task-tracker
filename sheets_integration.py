@@ -17,14 +17,30 @@ def get_google_sheets_credentials():
     # Check if we're running on Streamlit Cloud
     if hasattr(st, 'secrets') and 'gcp_service_account' in st.secrets:
         try:
-            creds_dict = json.loads(st.secrets.gcp_service_account.GOOGLE_SHEETS_CREDENTIALS)
-            if os.environ.get('STREAMLIT_SHARING_MODE') == 'streamlit_cloud':
-                # Running on Streamlit Cloud, use secrets directly
-                creds = Credentials.from_authorized_user_info(creds_dict)
-            else:
-                # Local development fallback
-                flow = InstalledAppFlow.from_client_secrets_dict(creds_dict, SCOPES)
-                creds = flow.run_local_server(port=0)
+            creds_info = json.loads(st.secrets.gcp_service_account.GOOGLE_SHEETS_CREDENTIALS)
+            
+            # Create OAuth2 credentials
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', SCOPES,
+                redirect_uri=creds_info['web']['redirect_uris'][0]
+            )
+            
+            # Get the authorization URL
+            auth_url, _ = flow.authorization_url(prompt='consent')
+            
+            # Show the authentication URL to the user
+            st.markdown(f"Please authenticate: [Click here to authenticate]({auth_url})")
+            
+            # Wait for the authentication code
+            code = st.text_input("Enter the authentication code:")
+            if code:
+                try:
+                    flow.fetch_token(code=code)
+                    creds = flow.credentials
+                except Exception as e:
+                    st.error(f"Error fetching token: {str(e)}")
+                    return None
+                    
         except Exception as e:
             st.error(f"Error loading credentials from secrets: {str(e)}")
             return None

@@ -1,4 +1,12 @@
 import streamlit as st
+
+# Set page configuration must be the first Streamlit command
+st.set_page_config(
+    page_title="Task Tracker",
+    page_icon="✅",
+    layout="wide"
+)
+
 import pandas as pd
 from datetime import datetime
 import json
@@ -15,13 +23,6 @@ if 'tasks' not in st.session_state:
             st.session_state.tasks = loaded_tasks
     except Exception as e:
         st.error(f"Failed to load tasks from Google Sheets: {str(e)}")
-
-# Set page configuration
-st.set_page_config(
-    page_title="Task Tracker",
-    page_icon="✅",
-    layout="wide"
-)
 
 # Title and description
 st.title("Task Tracker")
